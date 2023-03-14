@@ -5,7 +5,7 @@ public:
     using value_type = typename Buffer::value_type;
     using pointer = value_type*;
     using reference = value_type&;
-    using difference_type = std::ptrdiff_t;
+    using difference_type = value_type;
     using iterator_category = std::random_access_iterator_tag;
 
 private:
@@ -99,27 +99,32 @@ public:
         ReAlloc(6);
     }
 
+    ~Buffer() {
+        Clear();
+        ::operator delete(_mem_begin, _capacity * sizeof(T));
+    }
+
     void PushBack(const T& val) {
         if(_data_begin + _size == _mem_begin + _capacity) //nema mjesta straga
             MakeRoom();
 
-        _data_begin[_size++] = val;
+        new(&_data_begin[_size++]) T(val);
     }
 
     void PushBack(T&& val) {
         if(_data_begin + _size == _mem_begin + _capacity) //nema mjesta straga
             MakeRoom();
         
-        _data_begin[_size++] = std::move(val);
+        new(&_data_begin[_size++]) T(std::move(val));
     }
 
     template<typename... Args>
     T& EmplaceBack(Args&&... args) {
-        if(_data_begin + _size == _mem_begin + _capacity) //nema mjesta straga
+        if(_data_begin + _size == _mem_begin + _capacity)
             MakeRoom();
         
-        _data_begin[_size++] = T(std::forward<Args>(args)...);
-        return _data_begin[_size - 1];
+        new(&_data_begin[_size]) T(std::forward<Args>(args)...); //placement new
+        return _data_begin[_size++];
     }
 
     void PushFront(const T& val) {
@@ -131,14 +136,19 @@ public:
     }
 
     void PopFront() {
-        //destroy element;
+        _data_begin[0].~T();
         _data_begin ++;
         _size --;
     }
 
     void PopBack() {
-        //destroy element;
-        _size --;
+        _data_begin[--_size].~T();
+    }
+
+    void Clear() {
+        for (size_t i = 0; i < _size; i++)
+            _data_begin[i].~T();
+        _size = 0;
     }
 
     size_t Size() const {
@@ -177,11 +187,16 @@ private:
 
     void ReAlloc(size_t new_capacity) {
         std::cout << "Reallocating " << new_capacity << std::endl;
-        T* new_mem = new T[new_capacity];
-        for (size_t i = 0; i < _size; i ++)
-            new_mem[i + new_capacity/3] = std::move(_data_begin[i]);
 
-        delete[] _mem_begin;
+        T* new_mem = (T*)::operator new(new_capacity * sizeof(T));
+        for (size_t i = 0; i < _size; i ++)
+            new(&new_mem[i]) T(std::move(_data_begin[i]));
+        
+        for (size_t i = 0; i < _size; i ++)
+            _data_begin[i].~T();
+
+        ::operator delete(_mem_begin, _capacity * sizeof(T));
+
         _mem_begin = new_mem;
         _data_begin = new_mem + new_capacity/3;
         _capacity = new_capacity;

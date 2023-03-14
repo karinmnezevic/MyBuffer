@@ -28,6 +28,8 @@ int main() {
     b.PushBack(3);
     b.PushBack(4);
     b.PushBack(5);
+    b.PopFront();
+
     PrintBuffer(b);
 
     b.PopFront();
@@ -40,12 +42,16 @@ int main() {
     PrintBuffer(b);
     sort(b.begin(), b.end());
     PrintBuffer(b);
+    b.~Buffer();
 
-    Buffer<string> s;
-    s.PushBack("Marin");
-    s.PushBack("voli");
-    s.PushBack("Mireo");
-    PrintBuffer(s);
+    // Buffer<string> s;
+    // string k = "kifla";
+    // s.PushBack(k);
+    // s.PushBack("Marin");
+    // s.PushBack("voli");
+    // s.PushBack("Mireo");
+    // s.PopFront();
+    // PrintBuffer(s);
 
     return 0;
 }
