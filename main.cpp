@@ -41,26 +41,23 @@ int main() {
             b.end());   // 7 8 9 * * * 4 5
     PrintBuffer(b);     // "4 5 7 8 9"
 
+    b.PopBack();        // 7 8 * * * * 4 5
+    b.PopBack();        // 7 * * * * * 4 5
+    b.PushFront(9);     // 7 * * * * 9 4 5
+    b.PopBack();        // * * * * * 9 4 5
+    PrintBuffer(b);     // "9 4 5"
+    reverse(b.begin(),
+        b.end());       // * * * * * 9 4 5
+    PrintBuffer(b);     // "5 4 9"
 
-
-    b.PopFront();
-    b.PopFront();
-    b.PushBack(6);
-    PrintBuffer(b);
-    b.PushBack(1);
-    b.PushBack(2);
-    PrintBuffer(b);
-    
-    PrintBuffer(b);
-
-    // Buffer<string> s;
-    // string k = "kifla";
-    // s.PushBack(k);
-    // s.PushBack("Marin");
-    // s.PushBack("jede");
-    // s.PushBack("kifle");
-    // s.PopFront();
-    // PrintBuffer(s);
+    Buffer<string> s;
+    string k = "kifla";
+    s.PushBack(k);
+    s.PushBack("Marin");
+    s.PushBack("jede");
+    s.PushBack("kifle");
+    s.PopFront();
+    PrintBuffer(s);
 
     return 0;
 }

@@ -9,20 +9,18 @@ public:
     using iterator_category = std::random_access_iterator_tag;
 
 private:
-    pointer _data;
+    int _data;
     pointer _mem_begin;
-    pointer _data_begin;
-    size_t _capacity = 0;
+    size_t _front;
+    size_t _capacity;
 
 public:
     BufferIterator() = default;
-    BufferIterator(pointer my_data, pointer my_memory, pointer my_data_begin, size_t cap) : 
-        _data(my_data), _mem_begin(my_memory), _data_begin(my_data_begin), _capacity(cap) {}
+    BufferIterator(int my_data, pointer my_memory, size_t _buffer_front, size_t cap) : 
+        _data(my_data), _mem_begin(my_memory), _front(_buffer_front), _capacity(cap) {}
     
     BufferIterator& operator++() {        
-        _data ++;
-        if (_data == _mem_begin + _capacity)
-            _data = _mem_begin;
+        _data = (_data + 1) % _capacity;
         return *this; 
     }
 
@@ -33,9 +31,7 @@ public:
     }
 
     BufferIterator& operator--() {
-        if(_data == _mem_begin)
-            _data = _mem_begin + _capacity;
-        _data --;
+        _data = (_data - 1 + _capacity) % _capacity;
         return *this;
     }
 
@@ -45,38 +41,32 @@ public:
         return ret;
     }
     
-     difference_type operator-(const BufferIterator& other) const { 
-        return _data - other._data; 
+    difference_type operator-(const BufferIterator& other) const {
+        if (_front <= _data && _front <= other._data)
+            return _data - other._data;
+        if (_front > _data && _front > other._data)
+            return _data - other._data;
+        
+        if (_data < other._data) 
+            return _data + _capacity - other._data;
+        return -(_data + _capacity - other._data);
     }
 
     BufferIterator operator-(const difference_type other) const {
-        if (_data - other < _mem_begin)
-            return BufferIterator(_data + (_capacity - other), _mem_begin, _data_begin, _capacity);
-        return BufferIterator(_data - other, _mem_begin, _data_begin, _capacity);
+        return BufferIterator((_data - other + _capacity) % _capacity, _mem_begin, _front, _capacity);
     }
 
     BufferIterator operator+(const difference_type other) const {
-        difference_type  off = (_data + other) - (_mem_begin + _capacity);
-        if (_data + other >= _mem_begin + _capacity) 
-            return BufferIterator(_data + (other - _capacity), _mem_begin, _data_begin, _capacity);
-        return BufferIterator(_data + other, _mem_begin, _data_begin, _capacity);
+        return BufferIterator((_data + other) % _capacity, _mem_begin, _front, _capacity);
     }
-
-    // BufferIterator operator+(const BufferIterator& other) const {
-    //     return BufferIterator(_data + other);
-    // }   
     
     BufferIterator& operator+=(const difference_type other) {
-        if (_data + other >= _mem_begin + _capacity)
-            _data -= _capacity;
-        _data += other;
+        _data = (_data + other) % _capacity;
         return *this;
     }
 
     BufferIterator& operator-=(const difference_type other) {
-        if (_data - other < _mem_begin)
-            _data += _capacity;
-        _data -= other;
+        _data = (_data - other) % _capacity;
         return *this;
     }
 
@@ -89,9 +79,9 @@ public:
     }
     
     bool operator<(const BufferIterator& other) const {
-        if (_data_begin <= _data && _data_begin <= other._data)
+        if (_front <= _data && _front <= other._data)
             return _data < other._data;
-        if (_data_begin >= _data && _data_begin >= other._data)
+        if (_front > _data && _front > other._data)
             return _data < other._data;
         return _data > other._data;
     }
@@ -101,9 +91,9 @@ public:
     }
     
     bool operator>(const BufferIterator& other) const {
-        if (_data_begin <= _data && _data_begin <= other._data)
+        if (_front <= _data && _front <= other._data)
             return _data > other.data;
-        if (_data_begin >= _data && _data_begin >= other._data)
+        if (_front > _data && _front > other._data)
             return _data > other._data;
         return _data < other._data;
     }
@@ -113,15 +103,15 @@ public:
     }
 
     reference operator*() {
-        return *_data;
+        return _mem_begin[_data];
     }
 
     pointer operator->() {
-        return _data;
+        return &_mem_begin[_data];
     }
 
     reference operator[](const difference_type ind) {
-        return *(*this + ind);
+        return _mem_begin[(_data+ind)%_capacity];
     }
 };
 
@@ -133,7 +123,7 @@ public:
 
 private:
     T* _mem_begin = nullptr;
-    T* _data_begin = nullptr;
+    size_t _front = 0;
     size_t _size = 0;
     size_t _capacity = 0;
 
@@ -146,14 +136,13 @@ public:
         Clear();
         //::operator delete(_mem_begin, _capacity * sizeof(T));
         //::operator delete(_mem_begin);
-        //delete _mem_begin;
     }
 
     void PushBack(const T& val) {
-        if(_size == _capacity - 1)
+        if(_size == _capacity - 1) // jer begin() == end() ako _size = _capacity
             ReAlloc(2 * _capacity);
 
-        new(&(*end())) T(val); //placement new
+        new(&_mem_begin[(_front + _size)%_capacity]) T(val); //placement new
         _size ++;
     }
 
@@ -161,7 +150,7 @@ public:
         if(_size == _capacity - 1)
             ReAlloc(2 * _capacity);
         
-        new(&(*end())) T(std::move(val)); //placement new
+        new(&_mem_begin[(_front + _size)%_capacity]) T(std::move(val)); //placement new
         _size ++;
     }
 
@@ -170,33 +159,33 @@ public:
         if(_size == _capacity - 1)
             ReAlloc(2 * _capacity);
         
-        new(&(*end())) T(std::forward<Args>(args)...); //placement new
-        return *(begin() + (_size++));
+        new(&_mem_begin[(_front + _size)%_capacity]) T(std::forward<Args>(args)...); //placement new
+        return _mem_begin[(_front + _size ++)%_capacity];
     }
 
     void PushFront(const T& val) {
          if(_size == _capacity - 1)
             ReAlloc(2 * _capacity);
 
-        _data_begin = &(*(begin() - 1));
-        *_data_begin = val;
-        _size++;
+        _front = (_front - 1 + _capacity) % _capacity;
+        _mem_begin[_front] = val;
+        _size ++;
     }
 
     void PopFront() {
-        _data_begin[0].~T();
-        _data_begin = &(*(begin() + 1));
+        _mem_begin[_front].~T();
+        _front = (_front + 1) % _capacity;
         _size --;
     }
 
     void PopBack() {
-        *(end()-1).~T();
+        _mem_begin[(_front + _size - 1) % _capacity].~T();
         _size--;
     }
 
     void Clear() {
-        for (auto it = begin() ; it != end() ; it++)
-            (*it).~T();
+       for (size_t i = 0; i < _size; i ++)
+            _mem_begin[(_front + i)%_capacity].~T();
         _size = 0;
     }
 
@@ -208,18 +197,20 @@ public:
         return _capacity;
     }
 
+    bool Empty() const {
+        return _size == 0;
+    }
+
     const T& operator[](size_t index) const {
-        //provjera
-        return *(begin() + index);
+        return _mem_begin[(_front + index)%_capacity];
     }
 
     T& operator[](size_t index) {
-        //provjera
-        return *(begin() + index);
+        return _mem_begin[(_front + index)%_capacity];
     }
 
     Iterator begin() {
-        return Iterator(_data_begin, _mem_begin, _data_begin, _capacity);
+        return Iterator(_front, _mem_begin, _front, _capacity);
     }
 
     Iterator end() {
@@ -232,15 +223,17 @@ private:
 
         T* new_mem = (T*)::operator new(new_capacity * sizeof(T));
         for (size_t i = 0; i < _size; i ++)
-            new(&new_mem[i]) T(std::move(_data_begin[i]));
+            new(&new_mem[i]) T(std::move(
+                _mem_begin[(_front + i)%_capacity]
+            ));
         
         for (size_t i = 0; i < _size; i ++)
-            _data_begin[i].~T();
+            _mem_begin[(_front + i)%_capacity].~T();
 
         ::operator delete(_mem_begin, _capacity * sizeof(T));
 
         _mem_begin = new_mem;
-        _data_begin = new_mem;
+        _front = 0;
         _capacity = new_capacity;
     }
 };
