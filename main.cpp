@@ -18,9 +18,14 @@ void PrintBuffer(Buffer<string>& buff) {
     }
     cout << endl;
 }
-//int primjer
-//string primjer
-//kompleksna struktura koja ima pointer primjer
+
+void PrintBuffer(Buffer<vector<int>>& buff) {
+    for (auto vec : buff) {
+        for (auto elem : vec) 
+            cout << elem << " ";
+        cout << endl;
+    }
+}
 
 int main() {
 
@@ -39,6 +44,7 @@ int main() {
     PrintBuffer(b);     // "9 8 7 4 5"
     sort(b.begin(), 
             b.end());   // 7 8 9 * * * 4 5
+    //sort(b.cbegin(), b.cend()); -> assignment of read-only location
     PrintBuffer(b);     // "4 5 7 8 9"
 
     b.PopBack();        // 7 8 * * * * 4 5
@@ -47,17 +53,22 @@ int main() {
     b.PopBack();        // * * * * * 9 4 5
     PrintBuffer(b);     // "9 4 5"
     reverse(b.begin(),
-        b.end());       // * * * * * 9 4 5
+        b.end());       // * * * * * 5 4 9
     PrintBuffer(b);     // "5 4 9"
 
+    Buffer<vector<int>> bvi;
+    bvi.EmplaceBack(5,1);
+    bvi.EmplaceBack(3);
+    PrintBuffer(bvi);
+
     Buffer<string> s;
-    string k = "kifla";
+    string k = "lorem";
     s.PushBack(k);
-    s.PushBack("Marin");
-    s.PushBack("jede");
-    s.PushBack("kifle");
-    s.PopFront();
+    s.PushBack("ipsum");
+    s.PushBack("foo");
+    s.PushBack("bar");
     PrintBuffer(s);
 
+    
     return 0;
 }
